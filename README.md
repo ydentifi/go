@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./.assets/ydentifi-logo.png" alt="Ydentifi" width="120">
+  <img src="https://raw.githubusercontent.com/ydentifi/go/main/.assets/ydentifi-logo.png" alt="Ydentifi" width="120">
 </p>
 
 <h1 align="center">Ydentifi Go Client</h1>
@@ -7,11 +7,11 @@
 <p align="center">
   <a href="https://pkg.go.dev/github.com/ydentifi/go"><img src="https://img.shields.io/badge/godoc-reference-1BA1C0?style=flat-square" alt="Go Reference"></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/go-1.26%2B-1BA1C0?style=flat-square" alt="Go Version"></a>
-  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.3-1BA1C0?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.4-1BA1C0?style=flat-square" alt="Release"></a>
   <a href="https://ydentifi.io"><img src="https://img.shields.io/badge/ydentifi-identity%20server-1BA1C0?style=flat-square" alt="Ydentifi"></a>
 </p>
 
-The Go client for the Ydentifi identity server. A relying party uses it to create anonymous users, to enroll their phones, and to ask them to approve sign-ins and actions. It speaks gRPC over mutual TLS.
+The Go client for the [Ydentifi](https://ydentifi.io) identity server. A relying party uses it to create anonymous users, to enroll their phones, and to ask them to approve sign-ins and actions. It speaks gRPC over mutual TLS.
 
 ```bash
 go get github.com/ydentifi/go
@@ -23,6 +23,7 @@ Go 1.26.11 or later is required. The module path ends in `/go`; the package name
 
 ## Contents
 
+- [Before the first call](#before-the-first-call)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Error handling](#error-handling)
@@ -47,6 +48,18 @@ Go 1.26.11 or later is required. The module path ends in `/go`; the package name
 
 ---
 
+## Before the first call
+
+The client calls a deployment of the Ydentifi server, which is self-hosted. The deployment's operator provides three inputs:
+
+- **The server's address**: the host and port of its relying-party listener. The server listens on port 50051 unless its configuration sets another; a deployment behind a load balancer may publish another port, such as 443.
+- **The relying party's certificate and private key**, issued by the deployment's certificate authority.
+- **The deployment's CA bundle**, with which the client verifies the server.
+
+The Ydentifi documentation describes how a deployment is run, in the [Quickstart](https://ydentifi.io/docs/quickstart); how relying-party certificates are issued, under [Certificates & PKI](https://ydentifi.io/docs/certificates); and how relying parties and users are managed, under [Manage RPs & users](https://ydentifi.io/docs/manage). The [documentation](https://ydentifi.io/docs) covers the rest, including the [limits and quotas](https://ydentifi.io/docs/limits).
+
+---
+
 ## Quick start
 
 ```go
@@ -64,6 +77,7 @@ func main() {
 	client, err := ydentifi.New(
 		ydentifi.WithServerAddr("auth.example.com:443"),
 		ydentifi.WithCertFiles("/etc/ydentifi/rp.crt", "/etc/ydentifi/rp.key"),
+		ydentifi.WithCAFile("/etc/ydentifi/ca.pem"),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -206,6 +220,8 @@ Both apply to the same error.
 | `ErrConfiguration` | — | `New` could not build a client, as described under [Configuration](#configuration). It is not a `*StatusError` |
 
 Any other gRPC code is still a `*StatusError` and matches no sentinel.
+
+An answer of the server that the client cannot read, such as a time that is not RFC 3339, returns an error that matches `ErrMalformedResponse`. It is not a `*StatusError`, and a server that keeps to its protocol never causes it.
 
 ### StatusError
 
@@ -389,7 +405,7 @@ func (c *Client) BulkCreateUsers(ctx context.Context, count uint32, idempotencyK
 
 | Sentinel | Reason | When |
 |---|---|---|
-| `ErrInvalidArgument` | `INVALID_ARGUMENT` | `count` is out of range, the key is empty, too long or holds NUL, or the key was used before with another `count`. `Field` names `count` or `idempotency_key` |
+| `ErrInvalidArgument` | `INVALID_ARGUMENT` | `count` is out of range, the key is empty, too long or holds NUL, or the key was used before with another `count`. `Field` is `count` when `count` is out of range, and `idempotency_key` otherwise |
 | `ErrResourceExhausted` | `RATE_LIMIT_EXCEEDED` | A new key while the relying party already holds 1,000 keys. Each key is held for 30 days from its first user. A key already held is never refused. `Field` is `idempotency_key`, and the refusal carries no `AutoExpiresAt` |
 | `ErrAborted` | `SERVER_UNAVAILABLE` | Another call under the same key holds it. The call may be repeated with the same key |
 
@@ -828,7 +844,7 @@ func (c *Client) VerifyUserTOTP(ctx context.Context, opaqueID, code string) (boo
 
 - `code` — exactly 6 ASCII digits.
 
-**Returns** `true` when the code is valid. A code is checked against the current 30-second step and the steps on either side, about 90 seconds in all, and is accepted only if its step is later than the step of the last code accepted for the same secret. **A code therefore works once**: a code already accepted, or any code of an earlier or the same step, returns `false`, as a wrong code does.
+**Returns** `true` when the code is valid. A code is checked against the current 30-second step and the steps on either side, about 90 seconds in all, and is accepted only if its step is later than the step of the last code accepted for the same secret. **A code therefore works once**: a code already accepted, or any code of an earlier or the same step, returns `false` and spends an attempt, as a wrong code does.
 
 **Errors**
 
@@ -875,7 +891,7 @@ func (c *Client) IssueEnrollmentInvite(ctx context.Context, req IssueEnrollmentI
 | Sentinel | Reason | When |
 |---|---|---|
 | `ErrNotFound` | `USER_NOT_FOUND` | No user of the relying party has that opaque ID. `Subject` is the opaque ID sent |
-| `ErrFailedPrecondition` | `USER_LOCKED` | The user is locked |
+| `ErrFailedPrecondition` | `USER_LOCKED` | The user is locked. The refusal spends an attempt |
 | `ErrDeviceLimitReached` | `MAX_DEVICES_REACHED` | The user already has 3 active devices. No invite was issued, and an attempt was spent. The user's devices are listed, the user (once authenticated) chooses one to remove, it is revoked, and the invite is issued again |
 | `ErrInvalidArgument` | `INVALID_ARGUMENT` | `TTL` or `Context` is out of bounds |
 | `ErrResourceExhausted` | `RATE_LIMIT_EXCEEDED` | The user's invite attempts are spent, as listed under [Limits](#limits) |
@@ -1206,7 +1222,7 @@ The fields are described under [StatusError](#statuserror) in Error handling. `E
 ## Version
 
 ```go
-ydentifi.Version // "0.1.3"
+ydentifi.Version // "0.1.4"
 ```
 
 Versions are 0.x: a minor version may change the API.
@@ -1215,4 +1231,4 @@ Versions are 0.x: a minor version may change the API.
 
 ## Examples
 
-[example_test.go](./example_test.go) holds an example for every method.
+[example_test.go](https://github.com/ydentifi/go/blob/main/example_test.go) holds an example for every method.
