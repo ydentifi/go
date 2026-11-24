@@ -304,7 +304,7 @@ func ExampleClient_AwaitChallenge() {
 		log.Fatal(err)
 	}
 
-	// The server ends the wait at most 5 seconds after the challenge
+	// The server ends the wait about 5 seconds after the challenge
 	// expires; a deadline bounds it as well.
 	wait, stop := context.WithTimeout(context.Background(), 90*time.Second)
 	defer stop()

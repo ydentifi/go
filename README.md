@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://pkg.go.dev/github.com/ydentifi/go"><img src="https://img.shields.io/badge/godoc-reference-1BA1C0?style=flat-square" alt="Go Reference"></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/go-1.26%2B-1BA1C0?style=flat-square" alt="Go Version"></a>
-  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.4-1BA1C0?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.5-1BA1C0?style=flat-square" alt="Release"></a>
   <a href="https://ydentifi.io"><img src="https://img.shields.io/badge/ydentifi-identity%20server-1BA1C0?style=flat-square" alt="Ydentifi"></a>
 </p>
 
@@ -52,9 +52,11 @@ Go 1.26.11 or later is required. The module path ends in `/go`; the package name
 
 The client calls a deployment of the Ydentifi server, which is self-hosted. The deployment's operator provides three inputs:
 
-- **The server's address**: the host and port of its relying-party listener. The server listens on port 50051 unless its configuration sets another; a deployment behind a load balancer may publish another port, such as 443.
+- **The server's address**: the host and port of its relying-party listener. The server listens on port 50051 unless its configuration sets another; a deployment behind a load balancer may publish another port, such as 443. An address without a port means port 443.
 - **The relying party's certificate and private key**, issued by the deployment's certificate authority.
 - **The deployment's CA bundle**, with which the client verifies the server.
+
+A wrong CA bundle, server name or client certificate fails the TLS handshake, and the call returns an error that matches `ErrUnavailable`. When the address resolves to more than one IP address, the error describes the last address tried, and can read as a network fault, such as `network is unreachable` for an IPv6 address the host cannot reach. With `GRPC_GO_LOG_SEVERITY_LEVEL=warning` set, gRPC's log names the handshake's failure, such as `x509: certificate signed by unknown authority`.
 
 The Ydentifi documentation describes how a deployment is run, in the [Quickstart](https://ydentifi.io/docs/quickstart); how relying-party certificates are issued, under [Certificates & PKI](https://ydentifi.io/docs/certificates); and how relying parties and users are managed, under [Manage RPs & users](https://ydentifi.io/docs/manage). The [documentation](https://ydentifi.io/docs) covers the rest, including the [limits and quotas](https://ydentifi.io/docs/limits).
 
@@ -184,6 +186,8 @@ if errors.Is(err, ydentifi.ErrNotFound) {
 }
 ```
 
+A kind covers every reason of its code: on `IssueAuthChallenge`, `ErrNotFound` also stands for a user with no enrolled phone (`ErrorReasonNoActiveDeviceForUser`). The reason, read in detail below, tells them apart.
+
 **By detail**, with `errors.As` and `*StatusError`:
 
 ```go
@@ -229,7 +233,7 @@ An answer of the server that the client cannot read, such as a time that is not 
 - `Reason` is the server's reason, an `ErrorReason`, to be compared with the `ErrorReason…` constants, such as `ErrorReasonUserNotFound`. It is `ErrorReasonUnspecified` when the status carries no detail: a transport error, a status gRPC raised itself, or an internal failure answered without one.
 - `Message` is the status message.
 - `TraceID` is the call's W3C trace ID, 32 hexadecimal characters, when the server attached one. With it, the deployment's operators can find the call in the server's logs.
-- `Field` is the request field that failed a check.
+- `Field` is the request field that failed a check, named as the server's API names it, such as `totp_code` or `location_constraint.radius_m`.
 - `Subject` is what the refusal refers to, as the call named it: the opaque ID on `USER_NOT_FOUND`, the device ID on `DEVICE_NOT_FOUND`. On `RATE_LIMIT_EXCEEDED` from a per-user limit, and on `CHALLENGE_TOO_SOON`, it is `<relying party ID>:<opaque ID>`; on the limit of `UnlockUserRequestLimits`, it is `unlock_guard:<relying party ID>:<opaque ID>`.
 - `AutoExpiresAt` is set on `RATE_LIMIT_EXCEEDED` from a per-user limit and on `CHALLENGE_TOO_SOON`: the time from which the call is admitted again. A repetition before then is refused. It is the zero time when the server sent none.
 
@@ -312,7 +316,10 @@ The server ends a call that is not a stream after 30 seconds. It holds an `Await
 ctx, cancel := context.WithTimeout(context.Background(), 70*time.Second)
 defer cancel()
 for frame, err := range client.AwaitChallenge(ctx, challenge.ChallengeID) {
-	// ...
+	if err != nil {
+		return err
+	}
+	log.Println(frame.Status)
 }
 ```
 
@@ -331,14 +338,14 @@ for user, err := range client.ExportUsers(ctx, "") {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// use user
+	log.Println(user.OpaqueID)
 }
 ```
 
 - Each range over an iterator issues a new call. Ranging over the same iterator twice issues two calls.
 - An error is yielded once, and the iteration ends after it.
 - The iteration ends without an error when the server ends the stream.
-- Leaving the loop early ends the call, as does the end of `ctx`.
+- Leaving the loop early ends the call, as does the end of `ctx`. What the client had already received before the end of `ctx` is still yielded.
 
 ---
 
@@ -506,7 +513,7 @@ func (c *Client) DeleteUser(ctx context.Context, opaqueID string) error
 **Behavior**
 
 - The bans of the user's devices remain. `UnbanDevice` with `PermanentID` lifts one later.
-- An open `AwaitChallenge` on one of the user's challenges ends with `Expired` at the challenge's expiry, at most 5 seconds after it: the deletion itself does not end the wait.
+- An open `AwaitChallenge` on one of the user's challenges ends with `Expired` at the challenge's expiry, about 5 seconds after it: the deletion itself does not end the wait.
 - An opaque ID is never reused.
 
 ---
@@ -710,7 +717,7 @@ Each challenge issued costs one of the user's attempts. So do these refusals: `U
 
 The refusal names the character and its byte offset.
 
-Real text uses some of what is refused, so it is normalized or stripped before issuance:
+Real text uses some of what is refused. The relying party normalizes or strips it before it issues the challenge, as neither the client nor the server changes the text (`norm.NFC.String(text)`, from `golang.org/x/text/unicode/norm`, handles the normalization):
 
 - an emoji selector after an emoji that already shows as one (a star or check mark followed by U+FE0F), and a keycap without its U+FE0F;
 - soft hyphens, and the zero-width space Thai, Khmer and Shan put between words;
@@ -767,9 +774,9 @@ for frame, err := range client.AwaitChallenge(ctx, challenge.ChallengeID) {
 
 - The wait may begin before or after the user answers. An answer given before the stream opened arrives as its first frame.
 - After the first frame, the stream reports only the outcome: a delivery to the phone after the stream opened is not streamed.
-- When no answer comes, the server ends the stream with `Expired` at most 5 seconds after the challenge expires. A deadline on `ctx` is advisable, as described under [Deadlines](#deadlines).
+- When no answer comes, the server ends the stream with `Expired` about 5 seconds after the challenge expires. A deadline on `ctx` is advisable, as described under [Deadlines](#deadlines).
 - A second wait on the same challenge, served by the same server, ends the first with `Superseded`.
-- If the user is deleted during the wait, the wait ends with `Expired` at the challenge's expiry, at most 5 seconds after it.
+- If the user is deleted during the wait, the wait ends with `Expired` at the challenge's expiry, about 5 seconds after it.
 - A challenge ID in lower case is answered with `CHALLENGE_NOT_FOUND`, although `IssueAuthChallenge` refuses one with `INVALID_ARGUMENT`.
 - `Signature` is the phone's signature over the challenge. The server checked it before it declared `Approved`. No call returns the phone's key, so it cannot be checked independently; it is kept as a record.
 
@@ -1222,7 +1229,7 @@ The fields are described under [StatusError](#statuserror) in Error handling. `E
 ## Version
 
 ```go
-ydentifi.Version // "0.1.4"
+ydentifi.Version // "0.1.5"
 ```
 
 Versions are 0.x: a minor version may change the API.

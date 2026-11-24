@@ -45,6 +45,7 @@ const (
 	ErrorReasonNotImplemented                ErrorReason = 180
 	ErrorReasonServerInternal                ErrorReason = 181
 	ErrorReasonServerUnavailable             ErrorReason = 182
+	ErrorReasonServerTimeout                 ErrorReason = 183
 	ErrorReasonAppVersionTooOld              ErrorReason = 200
 )
 
@@ -83,6 +84,7 @@ var errorReasonNames = map[ErrorReason]string{
 	ErrorReasonNotImplemented:                "NOT_IMPLEMENTED",
 	ErrorReasonServerInternal:                "SERVER_INTERNAL",
 	ErrorReasonServerUnavailable:             "SERVER_UNAVAILABLE",
+	ErrorReasonServerTimeout:                 "SERVER_TIMEOUT",
 	ErrorReasonAppVersionTooOld:              "APP_VERSION_TOO_OLD",
 }
 

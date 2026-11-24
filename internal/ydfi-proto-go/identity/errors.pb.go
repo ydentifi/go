@@ -58,6 +58,7 @@ const (
 	ErrorReason_NOT_IMPLEMENTED                  ErrorReason = 180
 	ErrorReason_SERVER_INTERNAL                  ErrorReason = 181
 	ErrorReason_SERVER_UNAVAILABLE               ErrorReason = 182
+	ErrorReason_SERVER_TIMEOUT                   ErrorReason = 183
 	ErrorReason_APP_VERSION_TOO_OLD              ErrorReason = 200
 )
 
@@ -98,6 +99,7 @@ var (
 		180: "NOT_IMPLEMENTED",
 		181: "SERVER_INTERNAL",
 		182: "SERVER_UNAVAILABLE",
+		183: "SERVER_TIMEOUT",
 		200: "APP_VERSION_TOO_OLD",
 	}
 	ErrorReason_value = map[string]int32{
@@ -135,6 +137,7 @@ var (
 		"NOT_IMPLEMENTED":                  180,
 		"SERVER_INTERNAL":                  181,
 		"SERVER_UNAVAILABLE":               182,
+		"SERVER_TIMEOUT":                   183,
 		"APP_VERSION_TOO_OLD":              200,
 	}
 )
@@ -252,7 +255,7 @@ const file_protos_identity_errors_proto_rawDesc = "" +
 	"\btrace_id\x18\x02 \x01(\tR\atraceId\x12\x14\n" +
 	"\x05field\x18\x03 \x01(\tR\x05field\x12\x18\n" +
 	"\asubject\x18\x04 \x01(\tR\asubject\x124\n" +
-	"\x17auto_expires_at_unix_ms\x18\x05 \x01(\x03R\x13autoExpiresAtUnixMs*\x8f\a\n" +
+	"\x17auto_expires_at_unix_ms\x18\x05 \x01(\x03R\x13autoExpiresAtUnixMs*\xa4\a\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eUSER_NOT_FOUND\x10\x01\x12\x17\n" +
@@ -287,7 +290,8 @@ const file_protos_identity_errors_proto_rawDesc = "" +
 	"\x10INVALID_ARGUMENT\x10\xa0\x01\x12\x14\n" +
 	"\x0fNOT_IMPLEMENTED\x10\xb4\x01\x12\x14\n" +
 	"\x0fSERVER_INTERNAL\x10\xb5\x01\x12\x17\n" +
-	"\x12SERVER_UNAVAILABLE\x10\xb6\x01\x12\x18\n" +
+	"\x12SERVER_UNAVAILABLE\x10\xb6\x01\x12\x13\n" +
+	"\x0eSERVER_TIMEOUT\x10\xb7\x01\x12\x18\n" +
 	"\x13APP_VERSION_TOO_OLD\x10\xc8\x01B\x0f\xba\x02\fYDFIIdentityb\x06proto3"
 
 var (

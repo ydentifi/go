@@ -53,7 +53,7 @@ import (
 
 // Version is the semantic version of this SDK release. The client sends it
 // in its default User-Agent.
-const Version = "0.1.4"
+const Version = "0.1.5"
 
 // Client is a client of the Ydentifi relying-party API. It is safe for
 // concurrent use by multiple goroutines and is closed with Close.
