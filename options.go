@@ -11,6 +11,7 @@ import (
 // leave unset from the environment.
 type config struct {
 	addr, serverName  string
+	addrSet           bool
 	certFile, keyFile string
 	certPEM, keyPEM   []byte
 	caFile            string
@@ -29,9 +30,10 @@ type Option func(*config)
 
 // WithServerAddr sets the server's address: a host with an optional port,
 // with an IPv6 address in brackets, such as auth.example.com:443 or
-// [2001:db8::1]:443. It takes precedence over YDFI_SERVER_ADDR.
+// [2001:db8::1]:443. It takes precedence over YDFI_SERVER_ADDR. An empty
+// address is refused by New: it is never replaced by YDFI_SERVER_ADDR.
 func WithServerAddr(addr string) Option {
-	return func(c *config) { c.addr = addr }
+	return func(c *config) { c.addr, c.addrSet = addr, true }
 }
 
 // WithServerName sets the name that the server's certificate is verified

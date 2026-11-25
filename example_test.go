@@ -11,7 +11,8 @@ import (
 	ydentifi "github.com/ydentifi/go"
 )
 
-// opaqueID is the user in the examples.
+// opaqueID stands for the opaque ID CreateUser returned for a user who has
+// enrolled a phone.
 const opaqueID = "8b2c4f1e9d7a6b5c3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d"
 
 // ExampleNew builds a client from options. The other examples read
@@ -155,12 +156,13 @@ func ExampleClient_BulkCreateUsers() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	// The idempotency key allows the call to be repeated without creating
-	// users twice. An ID may be yielded by more than one call, so the IDs
-	// are kept as a set.
-	const count = 10000
+	// The idempotency key names one batch: the call repeated with the same
+	// key resumes it without creating users twice, and a new batch takes a
+	// new key. An ID may be yielded by more than one call, so the IDs are
+	// kept as a set.
+	const count = 10
 	ids := map[string]bool{}
-	for id, err := range client.BulkCreateUsers(ctx, count, "migration-2026-07-14") {
+	for id, err := range client.BulkCreateUsers(ctx, count, "example-batch-1") {
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -293,6 +295,7 @@ func ExampleClient_AwaitChallenge() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// The opaque ID CreateUser returned for a user who has enrolled a phone.
 	const opaqueID = "8b2c4f1e9d7a6b5c3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d"
 
 	ch, err := client.IssueAuthChallenge(ctx, ydentifi.IssueAuthChallengeRequest{

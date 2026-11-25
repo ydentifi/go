@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="https://pkg.go.dev/github.com/ydentifi/go"><img src="https://img.shields.io/badge/godoc-reference-1BA1C0?style=flat-square" alt="Go Reference"></a>
-  <a href="https://go.dev"><img src="https://img.shields.io/badge/go-1.26%2B-1BA1C0?style=flat-square" alt="Go Version"></a>
-  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.5-1BA1C0?style=flat-square" alt="Release"></a>
+  <a href="https://go.dev"><img src="https://img.shields.io/badge/go-1.26.11%2B-1BA1C0?style=flat-square" alt="Go Version"></a>
+  <a href="https://github.com/ydentifi/go/releases"><img src="https://img.shields.io/badge/release-v0.1.6-1BA1C0?style=flat-square" alt="Release"></a>
   <a href="https://ydentifi.io"><img src="https://img.shields.io/badge/ydentifi-identity%20server-1BA1C0?style=flat-square" alt="Ydentifi"></a>
 </p>
 
@@ -56,7 +56,7 @@ The client calls a deployment of the Ydentifi server, which is self-hosted. The 
 - **The relying party's certificate and private key**, issued by the deployment's certificate authority.
 - **The deployment's CA bundle**, with which the client verifies the server.
 
-A wrong CA bundle, server name or client certificate fails the TLS handshake, and the call returns an error that matches `ErrUnavailable`. When the address resolves to more than one IP address, the error describes the last address tried, and can read as a network fault, such as `network is unreachable` for an IPv6 address the host cannot reach. With `GRPC_GO_LOG_SEVERITY_LEVEL=warning` set, gRPC's log names the handshake's failure, such as `x509: certificate signed by unknown authority`.
+A wrong CA bundle, server name or client certificate fails the TLS handshake, and the call returns an error that matches `ErrUnavailable`. When the address resolves to more than one IP address, the error describes the last address tried, and can read as a network fault, such as `network is unreachable` for an IPv6 address the host cannot reach. The error's text then says that the TLS handshake may have failed. With `GRPC_GO_LOG_SEVERITY_LEVEL=warning` set, gRPC's log names the handshake's failure, such as `x509: certificate signed by unknown authority`.
 
 The Ydentifi documentation describes how a deployment is run, in the [Quickstart](https://ydentifi.io/docs/quickstart); how relying-party certificates are issued, under [Certificates & PKI](https://ydentifi.io/docs/certificates); and how relying parties and users are managed, under [Manage RPs & users](https://ydentifi.io/docs/manage). The [documentation](https://ydentifi.io/docs) covers the rest, including the [limits and quotas](https://ydentifi.io/docs/limits).
 
@@ -109,7 +109,7 @@ One `Client` is built with `New`, shared by all goroutines, and closed with `Clo
 
 | Variable | Option | Purpose |
 |---|---|---|
-| `YDFI_SERVER_ADDR` | `WithServerAddr(host:port)` | The identity server's address |
+| `YDFI_SERVER_ADDR` | `WithServerAddr(host:port)` | The identity server's address. An empty option is refused, not filled from the variable |
 | `YDFI_TLS_CERT_PATH` | `WithCertFiles` or `WithCert` | The relying party's client certificate (PEM) |
 | `YDFI_TLS_KEY_PATH` | `WithCertFiles` or `WithCert` | Its private key (PEM) |
 | `YDFI_TLS_CA_PATH` | `WithCAFile` or `WithCA` | The deployment's CA bundle that verifies the server (PEM) |
@@ -615,6 +615,7 @@ func (c *Client) BanDevice(ctx context.Context, opaqueID, deviceID, reason strin
 
 - The ban is on the phone's permanent ID, not on one enrollment.
 - Banning a phone that is already banned succeeds and changes nothing.
+- A device that is no longer active keeps its status, and the call returns 0; its phone is banned all the same. No call lists the relying party's bans.
 - A ban applies to the calling relying party only.
 - The user's TOTP secret is not replaced, as for `RevokeDevice`: it is replaced after the ban, not before.
 
@@ -1229,7 +1230,7 @@ The fields are described under [StatusError](#statuserror) in Error handling. `E
 ## Version
 
 ```go
-ydentifi.Version // "0.1.5"
+ydentifi.Version // "0.1.6"
 ```
 
 Versions are 0.x: a minor version may change the API.

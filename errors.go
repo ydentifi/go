@@ -167,11 +167,21 @@ type StatusError struct {
 
 // Error returns the status message, with the trace ID when there is one.
 func (e *StatusError) Error() string {
-	if e.TraceID != "" {
-		return fmt.Sprintf("ydentifi: %s (trace_id=%s)", e.Message, e.TraceID)
+	msg := e.Message
+	if e.Code == codes.Unavailable && e.Reason == ErrorReasonUnspecified {
+		msg += unavailableHint
 	}
-	return "ydentifi: " + e.Message
+	if e.TraceID != "" {
+		return fmt.Sprintf("ydentifi: %s (trace_id=%s)", msg, e.TraceID)
+	}
+	return "ydentifi: " + msg
 }
+
+// unavailableHint ends the text of an Unavailable error that carries no
+// reason: a failed TLS handshake reads as the last address's network fault,
+// as "network is unreachable" for an IPv6 address the host cannot reach.
+const unavailableHint = "; if the server is reachable, the TLS handshake may have failed: " +
+	"check the CA bundle, the server name and the client certificate"
 
 // GRPCStatus returns the gRPC status the error was made from, with every
 // detail the server attached, so that status.Code and status.FromError

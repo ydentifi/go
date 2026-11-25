@@ -1,0 +1,56 @@
+{
+  "artefact": "github.com/ydentifi/go",
+  "version": "v0.1.6",
+  "digest": "sha256:2e4533f1b00b9b4ebc5839e1c8e2f28ba785213d30d592a3dfec748b76bfdc55",
+  "commit": "e70261c7559fa7a171fc0ca2c7749d90681692a5",
+  "checked_at_ms": 1795560169655,
+  "advisories_at_ms": 1795560169655,
+  "covered_by": "The signed tag `v0.1.6`",
+  "checks": [
+    {
+      "name": "Known vulnerabilities in reachable code",
+      "tool": "govulncheck",
+      "status": "clean",
+      "result": "None"
+    },
+    {
+      "name": "Known vulnerabilities in dependencies",
+      "tool": "govulncheck",
+      "status": "clean",
+      "result": "None"
+    },
+    {
+      "name": "Licences of dependencies",
+      "status": "clean",
+      "result": "All 6 allowed"
+    },
+    {
+      "name": "Secrets in the published files",
+      "tool": "betterleaks",
+      "status": "clean",
+      "result": "None"
+    },
+    {
+      "name": "Static analysis",
+      "tool": "gosec, errcheck",
+      "status": "clean",
+      "result": "No open findings"
+    },
+    {
+      "name": "Internal references in the published files",
+      "status": "clean",
+      "result": "None"
+    },
+    {
+      "name": "The SDK's tests on the published files",
+      "status": "clean",
+      "result": "Pass"
+    },
+    {
+      "name": "Tests against a live server",
+      "tool": "cross-language parity",
+      "status": "clean",
+      "result": "All scenarios pass"
+    }
+  ]
+}

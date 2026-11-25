@@ -53,7 +53,7 @@ import (
 
 // Version is the semantic version of this SDK release. The client sends it
 // in its default User-Agent.
-const Version = "0.1.5"
+const Version = "0.1.6"
 
 // Client is a client of the Ydentifi relying-party API. It is safe for
 // concurrent use by multiple goroutines and is closed with Close.
@@ -106,6 +106,9 @@ func New(opts ...Option) (*Client, error) {
 	}
 	if cfg.caPEM != nil && cfg.caFile != "" {
 		return nil, configErr("the CA bundle is given both as a file and as PEM")
+	}
+	if cfg.addrSet && cfg.addr == "" {
+		return nil, configErr("WithServerAddr was given an empty address")
 	}
 	if cfg.addr == "" {
 		cfg.addr = os.Getenv("YDFI_SERVER_ADDR")

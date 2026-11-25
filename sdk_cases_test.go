@@ -105,6 +105,20 @@ func TestSDK009_MaterialThatDoesNotParse(t *testing.T) {
 	}
 }
 
+// SDK-017: an address option given as the empty string is refused, though
+// YDFI_SERVER_ADDR names a server: an empty option is a mistake, not a
+// request for the environment's address.
+func TestSDK017_AnEmptyAddressOptionIsRefused(t *testing.T) {
+	isolateFromEnv(t)
+	t.Setenv("YDFI_SERVER_ADDR", closedAddr)
+	certPEM, keyPEM := validPair(t, "rp")
+	c, err := New(WithServerAddr(""), WithCert(certPEM, keyPEM), WithCA(certPEM))
+	wantConfigErr(t, "an empty address option", c, err)
+	if !strings.Contains(err.Error(), "WithServerAddr was given an empty address") {
+		t.Fatalf("New: %v; want the empty option named", err)
+	}
+}
+
 // SDK-010: a bare host with no port, which the address rule admits, builds
 // a client whose verification name is the host. No call is made.
 func TestSDK010_ABareHostWithNoPort(t *testing.T) {

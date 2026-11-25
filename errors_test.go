@@ -23,6 +23,28 @@ func TestStatusErrorMessage(t *testing.T) {
 	}
 }
 
+// An Unavailable error with no reason, a transport failure, says that a
+// failed TLS handshake reads as a network fault; its Message stays the
+// status message. One the server refuses with a reason gets no hint.
+func TestAnUnavailableErrorWithNoReasonPointsAtTheHandshake(t *testing.T) {
+	transport := "connection error: desc = \"transport: Error while dialing: dial tcp [fdc4::254]:50057: connect: network is unreachable\""
+	err := mapErr(status.Error(codes.Unavailable, transport))
+	var se *StatusError
+	if !errors.As(err, &se) || se.Message != transport {
+		t.Fatalf("mapErr = %#v; want a *StatusError with the status message", err)
+	}
+	if want := "ydentifi: " + transport + unavailableHint; err.Error() != want {
+		t.Fatalf("Error() = %q, want %q", err.Error(), want)
+	}
+	st, err := status.New(codes.Unavailable, "server unavailable").WithDetails(&identitypb.ErrorDetail{Reason: identitypb.ErrorReason_SERVER_UNAVAILABLE})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mapErr(st.Err()).Error(); strings.Contains(got, "TLS handshake") {
+		t.Fatalf("Error() = %q; a refusal with a reason gets no hint", got)
+	}
+}
+
 // SDK-070: every code the server sends has its kind, the sentinel of the
 // code; any other code has none.
 func TestSDK070_EachCodeUnwrapsToItsKind(t *testing.T) {
